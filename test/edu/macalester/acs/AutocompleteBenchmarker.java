@@ -94,7 +94,7 @@ public class AutocompleteBenchmarker {
         System.out.println("populated tree with " + cities.size() + " cities in " + elapsed + " seconds");
     }
 
-    public void benchmark(int numThreads, final int numIterationsPerThread) {
+    public void benchmark(int numThreads, final int numIterationsPerThread) throws InterruptedException {
         // Create all the threads
         Thread [] threads = new Thread[numThreads];
         for (int i = 0; i < numThreads; i++) {
@@ -104,11 +104,25 @@ public class AutocompleteBenchmarker {
                 }
             };
         }
-        
+
+        double beginWall = getWallSeconds();
+
         // Start all the threads
         for (Thread t : threads) {
             t.start();
         }
+
+        // Wait for threads to finish
+        for (Thread t : threads) {
+            t.join();
+        }
+        
+        double endWall = getWallSeconds();
+        double elapsedWall = endWall - beginWall;
+        System.out.println("\n\noverall results:");
+        System.out.println("all threads took " + elapsedWall + " wall seconds");
+        System.out.println("num calls per iteration is " + (numIterationsPerThread * numThreads / elapsedWall));
+
     }
 
     /**
