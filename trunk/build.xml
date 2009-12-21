@@ -37,6 +37,9 @@
     <mkdir dir="${dist}"/>
     <mkdir dir="${build}"/>
     <mkdir dir="${build}/docs"/>
+
+    <copy file="README.txt" todir="${build}"/>
+
     <copy todir="${build}/docs">
       <fileset dir="${docs}"/>
     </copy>
