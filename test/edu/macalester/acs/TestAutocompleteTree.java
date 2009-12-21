@@ -38,12 +38,12 @@ public class TestAutocompleteTree extends TestCase {
         assertTrue(tree.contains(1));
 
         // make sure that increment and decrement work.
-        assertEquals(tree.get(2).getFrequency(), 0);
+        assertEquals(tree.get(2).getScoreAsInt(), 0);
         tree.increment(2);
         tree.increment(2);
-        assertEquals(tree.get(2).getFrequency(), 2);
+        assertEquals(tree.get(2).getScoreAsInt(), 2);
         tree.decrement(2);
-        assertEquals(tree.get(2).getFrequency(), 1);
+        assertEquals(tree.get(2).getScoreAsInt(), 1);
     }
 
     public void testBasicAutocomplete() {
@@ -61,7 +61,7 @@ public class TestAutocompleteTree extends TestCase {
         assertEquals(results.size(), 1);
     }
 
-    public void testFrequencyUpdates() {
+    public void testScoreUpdates() {
         SortedSet<AutocompleteEntry<Integer, City>> results;
         results = tree.autocomplete("C", 2);
 
@@ -76,7 +76,7 @@ public class TestAutocompleteTree extends TestCase {
         assertEquals(results.last().getValue(), CHICAGO);
     }
 
-    public void testFrequencyUpdates2() {
+    public void testScoreUpdates2() {
         tree.setMaxCacheQueryLength(2);
         SortedSet<AutocompleteEntry<Integer, City>> results;
         results = tree.autocomplete("C", 2);
