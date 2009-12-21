@@ -22,7 +22,7 @@ public class AutocompleteBenchmarker {
     private static final int NUM_ITERATIONS = 10000;
 
     /** Frequencies are randomly distributed between 0 and this number. */
-    private static final int MAX_FREQUENCY = 100;
+    private static final int MAX_SCORE = 100;
 
     /** The maximum length of an autocomplete query. */
     private static final int MAX_QUERY_LENGTH = 10;
@@ -34,8 +34,8 @@ public class AutocompleteBenchmarker {
     private static final int MAX_CACHE_QUERY_LENGTH = 2;
 
     /**
-     * Probability of updating the frequency of an entity.
-     * When not writing, a simple autocomplete query is invoked.
+     * Probability of updating the score of an entity.
+     * When not updating the score, an autocomplete query is invoked.
      */
     private static double WRITE_LIKELIHOOD = 0.01;
 
@@ -86,8 +86,8 @@ public class AutocompleteBenchmarker {
         tree.setNumCacheResults(MAX_RESULTS);
         tree.setMaxCacheQueryLength(MAX_CACHE_QUERY_LENGTH);
         for (City city : cities) {
-            int freq = rand.nextInt(MAX_FREQUENCY);
-            tree.add(new AutocompleteEntry<Integer, City>(city.getId(), city, freq));
+            int score = rand.nextInt(MAX_SCORE);
+            tree.add(new AutocompleteEntry<Integer, City>(city.getId(), city, score));
         }
         double end = getCpuSeconds();
         double elapsed = end - begin;
@@ -125,7 +125,7 @@ public class AutocompleteBenchmarker {
             // Select a city randomly
             City city = cities.get(rand.nextInt(cities.size()));
             if (rand.nextDouble() < WRITE_LIKELIHOOD) {
-                // update the frequency of one of the cities.
+                // update the score of one of the cities.
                 tree.increment(city.getId());
             } else {
                 int prefixLength = Math.min(1+rand.nextInt(MAX_QUERY_LENGTH-1), city.getName().length());

@@ -5,10 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 /**
- * Stores autocomplete information about an entity.
- *
- * User: shilad
- * Date: Dec 19, 2009
+ * @author Shilad Sen
+ * @see AutocompleteTree
  */
 public class AutocompleteEntry<K extends Comparable, V> {
     private K key;
@@ -19,7 +17,7 @@ public class AutocompleteEntry<K extends Comparable, V> {
      */
     List<AutocompleteFragment<K, V>> fragments = new ArrayList<AutocompleteFragment<K, V>>();
 
-    private int frequency;
+    private double score;
 
     /**
      * Creates a new autocomplete entry.
@@ -29,19 +27,19 @@ public class AutocompleteEntry<K extends Comparable, V> {
     public AutocompleteEntry(K key, V value) {
         this.key = key;
         this.value = value;
-        this.frequency = 0;
+        this.score = 0;
     }
 
     /**
      * Creates a new autocomplete entry.
      * @param key
      * @param value
-     * @param frequency
+     * @param score
      */
-    public AutocompleteEntry(K key, V value, int frequency) {
+    public AutocompleteEntry(K key, V value, int score) {
         this.key = key;
         this.value = value;
-        this.frequency = frequency;
+        this.score = score;
     }
 
     protected void clearFragments() {
@@ -64,12 +62,21 @@ public class AutocompleteEntry<K extends Comparable, V> {
         return value;
     }
 
-    public int getFrequency() {
-        return frequency;
+    public double getScore() {
+        return score;
     }
 
-    public void setFrequency(int frequency) {
-        this.frequency = frequency;
+    public void setScore(double score) {
+        this.score = score;
+    }
+
+    /**
+     * This method is useful if the score is actually a
+     * frequency (as it commonly is).
+     * @return
+     */
+    public int getScoreAsInt() {
+        return (int) Math.round(score);
     }
 
     public List<AutocompleteFragment<K,V>> getFragments() {
@@ -77,6 +84,6 @@ public class AutocompleteEntry<K extends Comparable, V> {
     }
 
     public String toString() {
-        return "entry (" + getKey() + ", " + getValue() + ") with freq " + frequency; 
+        return "entry (" + getKey() + ", " + getValue() + ") with freq " + score;
     }
 }
