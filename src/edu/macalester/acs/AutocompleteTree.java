@@ -4,6 +4,7 @@ import java.util.*;
 
 /**
  * @author Shilad Sen
+ * 
  * Supports autocomplete queries on some entities.
  *
  * The key should be a unique identifier for an entity such as a database id.
@@ -44,10 +45,17 @@ public class AutocompleteTree<K extends Comparable, V> {
     /** Number of results to cache for each query */
     private int numCacheResults = 20;
 
+    /**
+     * Creates a new autocomplete tree with a SimpleFragmenter.
+     */
     public AutocompleteTree() {
         fragmenter = new SimpleFragmenter<K, V>();
     }
 
+    /**
+     * Creates a new autocomplete tree with a custom fragmenter.
+     * @param fragmenter 
+     */
     public AutocompleteTree(Fragmenter<K, V> fragmenter) {
         this.fragmenter = fragmenter;
     }
@@ -68,12 +76,16 @@ public class AutocompleteTree<K extends Comparable, V> {
         }
     }
 
+    /**
+     * Returns the maximum number of results cached for any query.
+     * @return
+     */
     public int getNumCacheResults() {
         return numCacheResults;
     }
 
     /**
-     * Sets the maximum number of results that are cached for each query.
+     * Sets the maximum number of results that are cached for short queries.
      * @param numCacheResults
      */
     public void setNumCacheResults(int numCacheResults) {
@@ -82,7 +94,12 @@ public class AutocompleteTree<K extends Comparable, V> {
             cache.clear();
         }
     }
-    
+
+    /**
+     * Add a new autocomplete entry to the map.
+     * 
+     * @param entry
+     */
     public void add(AutocompleteEntry<K, V> entry) {
         synchronized (map) {
             if (map.containsKey(entry.getKey())) {
@@ -104,6 +121,11 @@ public class AutocompleteTree<K extends Comparable, V> {
         }
     }
 
+    /**
+     * Removes an autocomplete entry from the map.
+     * 
+     * @param key
+     */
     public void remove(K key) {
         synchronized (map) {
             AutocompleteEntry entry = map.get(key);
@@ -119,65 +141,53 @@ public class AutocompleteTree<K extends Comparable, V> {
         }
     }
 
-    private void adjustCacheForDecreasedFrequency(AutocompleteEntry<K, V> entry) {
-        synchronized(cache) {
-            for (Object o : entry.getFragments()) {
-                // hack for unknown reasons
-                AutocompleteFragment<K, V> fragment = (AutocompleteFragment<K, V>)o;
-                for (int n = 1; n <= maxCacheQueryLength; n++) {
-                    if (fragment.getFragment().length() >= n) {
-                        String prefix = fragment.getFragment().substring(0, n);
-                        SortedSet<AutocompleteEntry<K, V>> results = cache.get(prefix);
-                        if (results != null && results.contains(entry)) {
-                            cache.remove(prefix);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private void adjustCacheForIncreasedFrequency(AutocompleteEntry<K, V> entry) {
-        // Check to see if the new entry will make the cut in the cache.
-        synchronized(cache) {
-            for (AutocompleteFragment<K, V> fragment : entry.getFragments()) {
-                for (int n = 1; n <= maxCacheQueryLength; n++) {
-                    if (fragment.getFragment().length() >= n) {
-                        String prefix = fragment.getFragment().substring(0, n);
-                        SortedSet<AutocompleteEntry<K, V>> results = cache.get(prefix);
-                        if (results != null) {
-                            if (results.size() < numCacheResults ||
-                                    results.last().getFrequency() <= entry.getFrequency()) {
-                                cache.remove(prefix);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
+    /**
+     * Check to see if the map contains an entry associated with the
+     * provided key.
+     * @param key
+     * @return
+     */
     public boolean contains(K key) {
         synchronized (map) {
             return map.containsKey(key);
         }
     }
-    
+
+    /**
+     * Return the entry associated with the provided key.
+     * @param key
+     * @return
+     */
     public AutocompleteEntry<K, V> get(K key) {
         synchronized (map) {
             return map.get(key);
         }
     }
 
+    /**
+     * Increments the frequency of the provided key by 1.
+     * @param key
+     */
     public void increment(K key) {
         setFrequency(key, get(key).getFrequency() + 1);
     }
 
+    /**
+     * Decrements the frequency of the provided key by 1.
+     * @param key
+     */
     public void decrement(K key) {
         setFrequency(key, get(key).getFrequency() - 1);
     }
 
 
+    /**
+     * Sets the frequency of the entry associated with the key.
+     * This function MUST be used to set the frequency of an entry once
+     * it is in the tree.  Otherwise, the tree will get very confused. 
+     * @param key
+     * @param frequency
+     */
     public void setFrequency(K key, int frequency) {
         synchronized (map) {
             AutocompleteEntry entry = map.get(key);
@@ -208,8 +218,17 @@ public class AutocompleteTree<K extends Comparable, V> {
 
     }
 
-
-    
+    /**
+     * Executes an autocomplete search against the stored entries.
+     * Before comparing the query to fragments, each is normalized using
+     * the fragmenter (or SimpleFragmenter if none was specified)
+     * If there are more than maxResults that begin with the query, the
+     * highest-frequency results are returned.
+     *
+     * @param query
+     * @param maxResults Maximum number of results that are returned.
+     * @return
+     */
     public SortedSet<AutocompleteEntry<K, V>> autocomplete(String query, int maxResults) {
         String start = fragmenter.normalize(query);
         TreeSet<AutocompleteEntry<K, V>> results = null;
@@ -250,7 +269,7 @@ public class AutocompleteTree<K extends Comparable, V> {
             }
         }
 
-        // Truncate if necessary (may be because of cache fills)
+        // Truncate if necessary (because of cache fills)
         if (results.size() > maxResults) {
             TreeSet<AutocompleteEntry<K, V>> truncated = new TreeSet<AutocompleteEntry<K, V>>(FREQ_COMPARATOR);
             Iterator<AutocompleteEntry<K, V>> iterator = results.iterator();
@@ -261,5 +280,55 @@ public class AutocompleteTree<K extends Comparable, V> {
         }
 
         return results;
+    }
+
+        /**
+     * Adjusts the cache when the frequency of an entry is about to be decreased.
+     * Note that this has to be called BEFORE the frequency is decreased, since
+     * the frequency is incorporated in the entry's compareTo() function.
+     * @param entry
+     */
+    private void adjustCacheForDecreasedFrequency(AutocompleteEntry<K, V> entry) {
+        synchronized(cache) {
+            for (Object o : entry.getFragments()) {
+                // hack for unknown reasons
+                AutocompleteFragment<K, V> fragment = (AutocompleteFragment<K, V>)o;
+                for (int n = 1; n <= maxCacheQueryLength; n++) {
+                    if (fragment.getFragment().length() >= n) {
+                        String prefix = fragment.getFragment().substring(0, n);
+                        SortedSet<AutocompleteEntry<K, V>> results = cache.get(prefix);
+                        if (results != null && results.contains(entry)) {
+                            cache.remove(prefix);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Adjusts the cache when the frequency of an entry is about to be increased.
+     * Note that this has to be called BEFORE the frequency is increased, since
+     * the frequency is incorporated in the entry's compareTo() function.
+     * @param entry
+     */
+    private void adjustCacheForIncreasedFrequency(AutocompleteEntry<K, V> entry) {
+        // Check to see if the new entry will make the cut in the cache.
+        synchronized(cache) {
+            for (AutocompleteFragment<K, V> fragment : entry.getFragments()) {
+                for (int n = 1; n <= maxCacheQueryLength; n++) {
+                    if (fragment.getFragment().length() >= n) {
+                        String prefix = fragment.getFragment().substring(0, n);
+                        SortedSet<AutocompleteEntry<K, V>> results = cache.get(prefix);
+                        if (results != null) {
+                            if (results.size() < numCacheResults ||
+                                    results.last().getFrequency() <= entry.getFrequency()) {
+                                cache.remove(prefix);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

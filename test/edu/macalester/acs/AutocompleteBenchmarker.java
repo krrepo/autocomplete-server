@@ -155,8 +155,18 @@ public class AutocompleteBenchmarker {
     }
 
     public static void main(String args[]) throws Exception {
+
+        if (args.length != 1) {
+            System.err.println("usage: java edu.macalester.acs.AutocompleteBenchmarker somepath/cities.txt");
+            System.exit(1);
+        }
+        File path = new File(args[0]);
+        if (!path.isFile()) {
+            System.err.println("file not found: " + path);
+            System.exit(1);
+        }
         AutocompleteBenchmarker benchmarker = new AutocompleteBenchmarker();
-        benchmarker.readCities(PATH_CITIES);
+        benchmarker.readCities(path);
         benchmarker.buildTree();
         benchmarker.benchmark(NUM_THREADS, NUM_ITERATIONS);
     }
