@@ -199,10 +199,29 @@ public class AutocompleteTree<K extends Comparable, V> {
     }
 
     /**
+     * Adds a new autocomplete entry to the tree.
+     * @param key
+     * @param value
+     */
+    public void add(K key, V value) {
+        add(new AutocompleteEntry<K, V>(key, value));
+    }
+
+    /**
+     * Adds a new autocomplete entry to the tree.
+     * @param key
+     * @param value
+     * @param score
+     */
+    public void add(K key, V value, double score) {
+        add(new AutocompleteEntry<K, V>(key, value, score));
+    }
+
+    /**
      * Returns a collection of all the autocomplete entries in the
      * tree.  This is an expensive operation memory-wise, since the
      * list is copied.  We need to do this to ensure that underlying
-     * collection can later be changed.
+     * collection is not changed by the caller.
      * 
      * @return
      */
