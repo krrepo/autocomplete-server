@@ -68,8 +68,13 @@ import edu.macalester.acs.AutocompleteEntry;
 
         >>> [{"id":"34a","name":"Bob","score":300.2,"foo":"bar"},
         {"id":"20395","name":"Myrtle Beach","state":"South Carolina","score":99.9812292931998}]
-
   </blockquote></pre>
+ *
+ * TODO:
+ * <ul>
+ *  <li>Create option controlling use of flushing.
+ *  <li>Create in-memory version without transaction file.
+ * </ul>
  * 
  * @author Shilad Sen
  */
@@ -79,6 +84,7 @@ public class AutocompleteServer {
     private static final String PATH_UPDATE = "/update";
     private static final String PATH_DUMP = "/dump";
     private static final String PATH_AUTOCOMPLETE = "/autocomplete";
+    private static final String PATH_RELOAD = "/reload";
 
     BufferedWriter writer;
     final File txPath;
@@ -87,6 +93,13 @@ public class AutocompleteServer {
     HTTPServer server;
     AutocompleteTree<String, AbstractEntity> tree;
 
+    /**
+     * Creates a new autocomplete server
+     * @param tree The autocomplete tree
+     * @param txPath The transaction path (populates and persists the tree)
+     * @param port The port to listen on
+     * @throws IOException
+     */
     public AutocompleteServer(AutocompleteTree<String, AbstractEntity> tree, File txPath, int port) throws IOException {
         this.txPath = txPath;
         this.tree = tree;
@@ -105,6 +118,10 @@ public class AutocompleteServer {
 
     }
 
+    /**
+     * Clears the tree and reloads it with entries from the transaction file.
+     * @throws IOException
+     */
     public void reloadData() throws IOException {
         log.info("loading entries from " + txPath);
         int i = 0;
@@ -130,56 +147,14 @@ public class AutocompleteServer {
         log.info("loaded " + i + " entries from " + txPath);
     }
 
-    
-    public void start() throws IOException {
-        server.start();
-    }
 
-    private int sendError(int code, HTTPServer.Request request, HTTPServer.Response response, String message) throws IOException {
-        log.warning("error occured processing " + request.getPath() + ": " + message);
-        if (!message.endsWith("\n")) {
-            message += "\n";
-        }
-        response.sendError(code, message);
-        return code;
-    }
-
-    private int sendError(HTTPServer.Request request, HTTPServer.Response response, String message) throws IOException {
-        return sendError(500, request, response, message);
-    }
-
-    private int sendOkay(HTTPServer.Request request, HTTPServer.Response response, String message) throws IOException {
-        if (!message.endsWith("\n")) {
-            message += "\n";
-        }
-        response.send(200, message);
-        return 200;
-    }
-
-
-    public int handle(HTTPServer.Request request, HTTPServer.Response response) throws IOException {
-        log.info("Received request " + request.getPath());
-
-        int code = 200;
-
-        if (request.getPath().startsWith(PATH_DUMP)) {
-            code = handleDump(request, response);
-        } else if (request.getPath().startsWith(PATH_UPDATE)) {
-            code = handleUpdate(request, response);
-        } else if (request.getPath().startsWith(PATH_AUTOCOMPLETE)) {
-            code = handleAutocomplete(request, response);
-        } else {
-            code = sendError(400, request, response, "unknown path: " + request.getPath());
-        }
-        
-        return 0;
-    }
-    
-    public int handleDump(HTTPServer.Request request, HTTPServer.Response response) throws IOException {
-        dump();
-        return sendOkay(request, response, "okay");
-    }
-
+    /**
+     * Replaces the transaction file with the contents of the current tree.
+     * This can significantly reduce the size of the transaction file if there
+     * are many updates to entities.
+     * 
+     * @throws IOException
+     */
     public void dump() throws IOException {
         synchronized (txPath) {
             File newFile = new File(txPath.toString() + ".new");
@@ -196,6 +171,48 @@ public class AutocompleteServer {
         }
     }
 
+    /**
+     * Starts the server.
+     * @throws IOException
+     */
+    public void start() throws IOException {
+        server.start();
+    }
+
+    /**
+     * Handles requests to the server.
+     * @param request
+     * @param response
+     * @return
+     * @throws IOException
+     */
+    public int handle(HTTPServer.Request request, HTTPServer.Response response) throws IOException {
+        log.info("Received request " + request.getPath());
+
+        if (request.getPath().startsWith(PATH_DUMP)) {
+            dump();
+            sendOkay(request, response, "okay");
+        } else if (request.getPath().startsWith(PATH_UPDATE)) {
+            handleUpdate(request, response);
+        } else if (request.getPath().startsWith(PATH_AUTOCOMPLETE)) {
+            handleAutocomplete(request, response);
+        } else if (request.getPath().startsWith(PATH_RELOAD)) {
+            reloadData();
+            sendOkay(request, response, "okay");
+        } else {
+            sendError(400, request, response, "unknown path: " + request.getPath());
+        }
+        
+        return 0;
+    }
+
+    /**
+     * Completes an autocomplete query request.
+     * @param request
+     * @param response
+     * @return
+     * @throws IOException
+     */
     public int handleAutocomplete(HTTPServer.Request request, HTTPServer.Response response) throws IOException {
         Map<String, String> params = request.getParams();
         if (!params.containsKey("query")) {
@@ -219,6 +236,13 @@ public class AutocompleteServer {
         return sendOkay(request, response, body);
     }
 
+    /**
+     * Completes a request to update an entry in the tree.
+     * @param request
+     * @param response
+     * @return
+     * @throws IOException
+     */
     public int handleUpdate(HTTPServer.Request request, HTTPServer.Response response) throws IOException {
         if (!request.getMethod().equals("POST")) {
             return sendError(request, response, "only POST method allowed for " + PATH_UPDATE);
@@ -253,6 +277,58 @@ public class AutocompleteServer {
         return sendOkay(request, response, "okay");
     }
 
+    /**
+     * Returns an error message to the client.
+     * @param code
+     * @param request
+     * @param response
+     * @param message
+     * @return
+     * @throws IOException
+     */
+    private int sendError(int code, HTTPServer.Request request, HTTPServer.Response response, String message) throws IOException {
+        log.warning("error occured processing " + request.getPath() + ": " + message);
+        if (!message.endsWith("\n")) {
+            message += "\n";
+        }
+        response.sendError(code, message);
+        return code;
+    }
+
+    /**
+     * Returns an error message to the client with status code 500.
+     * @param request
+     * @param response
+     * @param message
+     * @return
+     * @throws IOException
+     */
+    private int sendError(HTTPServer.Request request, HTTPServer.Response response, String message) throws IOException {
+        return sendError(500, request, response, message);
+    }
+
+    /**
+     * Returns a message to the client with status 200 (OKAY)
+     * @param request
+     * @param response
+     * @param message
+     * @return
+     * @throws IOException
+     */
+    private int sendOkay(HTTPServer.Request request, HTTPServer.Response response, String message) throws IOException {
+        if (!message.endsWith("\n")) {
+            message += "\n";
+        }
+        response.send(200, message);
+        return 200;
+    }
+
+    /**
+     * Returns the contents of an HTTP post request as a string.
+     * @param request
+     * @return
+     * @throws IOException
+     */
     private String readBody(HTTPServer.Request request) throws IOException {
         String body = "";
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.getBody()));
