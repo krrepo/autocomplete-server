@@ -12,6 +12,20 @@
   <property name="docs"  location="docs"/>
   <property name="test"  location="test"/>
   <property name="data"  location="data"/>
+  <property name="data"  location="lib"/>
+
+  <path id="path.libs">
+    <pathelement path="${classpath}"/>
+    <fileset dir="lib">
+        <include name="**/*.jar"/>
+    </fileset>
+  </path>
+
+  <path id="path.all">
+    <path refid="path.libs"/>
+    <pathelement location="${build}/test"/>
+    <pathelement location="${build}"/>
+  </path>
 
   <target name="init">
     <!-- Create the time stamp -->
@@ -23,8 +37,8 @@
   <target name="compile" depends="init"
         description="compile the source " >
     <!-- Compile the java code from ${src} and ${test} into ${build} -->
-    <javac srcdir="${src}" destdir="${build}"/>
-    <javac srcdir="${test}" destdir="${build}"/>
+    <javac srcdir="${src}" destdir="${build}" classpathref="path.libs" debuglevel="lines,vars,source" debug="on"/>
+    <javac srcdir="${test}" destdir="${build}" classpathref="path.libs" debuglevel="lines,vars,source" debug="on"/>
   </target>
 
   <target name="dist" depends="compile,javadoc"
@@ -77,15 +91,21 @@
     <delete dir="${dist}"/>
   </target>
 
+  <target name="server" depends="compile"
+        description="run the autocomplete server">
+       <java classname="edu.macalester.acs.server.AutocompleteServer">
+         <arg value="${data}/server.txt"/>
+         <arg value="10101"/>
+         <classpath refid="path.all"/>
+       </java>
+  </target>
+
+ 
   <target name="bench" depends="compile"
         description="benchmark">
        <java classname="edu.macalester.acs.AutocompleteBenchmarker">
          <arg value="${data}/cities.txt"/>
-         <classpath>
-            <pathelement location="${build}/test"/>
-            <pathelement location="${build}"/>
-            <pathelement path="${java.class.path}"/>
-         </classpath>
+         <classpath refid="path.all"/>
        </java>
   </target>
 
@@ -94,12 +114,7 @@
     <mkdir dir="${test}/reports"/>
 
     <junit printsummary="yes" haltonfailure="yes">
-      <classpath>
-        <pathelement location="${build}/test"/>
-        <pathelement location="${build}"/>
-        <pathelement path="${java.class.path}"/>
-      </classpath>
-    
+      <classpath refid="path.all"/>
       <formatter type="plain"/>
     
       <batchtest todir="${test}/reports">
