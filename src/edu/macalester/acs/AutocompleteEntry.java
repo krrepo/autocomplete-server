@@ -36,7 +36,7 @@ public class AutocompleteEntry<K extends Comparable, V> {
      * @param value
      * @param score
      */
-    public AutocompleteEntry(K key, V value, int score) {
+    public AutocompleteEntry(K key, V value, double score) {
         this.key = key;
         this.value = value;
         this.score = score;

@@ -125,6 +125,18 @@ public class AutocompleteTree<K extends Comparable, V> {
         this.fragmenter = fragmenter;
     }
 
+    public void clear() {
+        synchronized (map) {
+            synchronized (tree) {
+                synchronized (cache) {
+                    map.clear();
+                    tree.clear();
+                    cache.clear();
+                }
+            }
+        }
+    }
+
     public int getMaxCacheQueryLength() {
         return maxCacheQueryLength;
     }
@@ -183,6 +195,20 @@ public class AutocompleteTree<K extends Comparable, V> {
                 tree.addAll(entry.getFragments());
             }
             adjustCacheForIncreasedScore(entry);
+        }
+    }
+
+    /**
+     * Returns a collection of all the autocomplete entries in the
+     * tree.  This is an expensive operation memory-wise, since the
+     * list is copied.  We need to do this to ensure that underlying
+     * collection can later be changed.
+     * 
+     * @return
+     */
+    public Collection<AutocompleteEntry<K, V>> getEntries() {
+        synchronized (map) {
+            return new ArrayList<AutocompleteEntry<K, V>>(map.values());
         }
     }
 
