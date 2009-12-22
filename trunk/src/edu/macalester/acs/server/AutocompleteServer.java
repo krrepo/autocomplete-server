@@ -12,6 +12,65 @@ import edu.macalester.acs.AutocompleteTree;
 import edu.macalester.acs.AutocompleteEntry;
 
 /**
+ * A simple, extensible http autocomplete server.<p>
+ *
+ * This file's main method takes two arguments: a port to listen on,
+ * and a file that contains a transaction log of autocomplete entities.
+ *
+ * An autocomplete entity is an extensible (key, value) hashtables
+ * that supports any types supported by json.  Three keys are required:
+ * <ul>
+ * <li>id (string) - the primary key in the autocomplete tre.
+ * <li>name (string) - the string autocomplete queries are matched against.
+ * <li>score (int or double) - the score associated with the entity in
+ * the autocomplete tree; used when too many entities match an autocomplete
+ * search.
+ * </ul>
+ * The server supports any other key, value fields specified by clients.<p>
+ *
+ * This server supports three actions:<p>
+ *
+ * <ul>
+ * <li><i>update</i> updates an entry in the tree.  The HTTP method must be
+ * POST, and the body of the post must be a serialized JSON hashtable with
+ * (at a minimum) the three required fields (id, name, score).  The tree
+ * stores the entry, and replaces any existing internal entries.  The server
+ * writes the updates to the transaction log. <p>
+ *
+ * <li><i>autocomplete</i> returns entities that match the required "query"
+ * parameter.  The optional "max" parameter specifies the maximum number of
+ * results returned.  The result format is a JSON-serialized list of entries
+ * in the same format that they are specified to the "update" action. <p>
+ *
+ * <li><i>dump</i>Clears the transaction log, and then writes the current
+ * state of entities out to the log.  Though the update() command updates
+ * the transaction log, if you have many updates to the same object (say
+ * frequency updates), then dump() will reduce the size of the log and
+ * therefore reduce your startup time.                                    <p>
+ * </ul>
+ *
+ * The server reads the transaction log every time it starts up.<p>
+ *
+ * Python example of reading from, and writing to the server:
+ *
+ * <pre><blockquote>
+        import httplib
+
+        conn = httplib.HTTPConnection("localhost", 10101)
+        conn.request("POST", "/update", '{ "id" : "34a", "name" : "Bob", "score" : 300.2, "foo" : "bar"}')
+        print conn.getresponse().read()
+
+        >>> okay
+
+        # execute an ajax query
+        conn.request("GET", "/autocomplete?query=b&max=2")
+        print conn.getresponse().read()
+
+        >>> [{"id":"34a","name":"Bob","score":300.2,"foo":"bar"},
+        {"id":"20395","name":"Myrtle Beach","state":"South Carolina","score":99.9812292931998}]
+
+  </blockquote></pre>
+ * 
  * @author Shilad Sen
  */
 public class AutocompleteServer {
@@ -22,18 +81,18 @@ public class AutocompleteServer {
     private static final String PATH_AUTOCOMPLETE = "/autocomplete";
 
     BufferedWriter writer;
-    final File dataPath;
+    final File txPath;
     JSONParser parser;
 
     HTTPServer server;
     AutocompleteTree<String, AbstractEntity> tree;
 
-    public AutocompleteServer(AutocompleteTree<String, AbstractEntity> tree, File dataPath, int port) throws IOException {
-        this.dataPath = dataPath;
+    public AutocompleteServer(AutocompleteTree<String, AbstractEntity> tree, File txPath, int port) throws IOException {
+        this.txPath = txPath;
         this.tree = tree;
         server = new HTTPServer(port);
         parser = new JSONParser();
-        writer = new BufferedWriter(new FileWriter(dataPath, true));
+        writer = new BufferedWriter(new FileWriter(txPath, true));
         HTTPServer.VirtualHost host = server.getVirtualHost(null);
         
         host.addContext("/", new HTTPServer.ContextHandler() {
@@ -47,11 +106,11 @@ public class AutocompleteServer {
     }
 
     public void reloadData() throws IOException {
-        log.info("loading entries from " + dataPath);
+        log.info("loading entries from " + txPath);
         int i = 0;
-        synchronized (dataPath) {
+        synchronized (txPath) {
             tree.clear();
-            BufferedReader reader = new BufferedReader(new FileReader(dataPath));
+            BufferedReader reader = new BufferedReader(new FileReader(txPath));
             while (true) {
                 String line = reader.readLine();
                 if (line == null) {
@@ -68,7 +127,7 @@ public class AutocompleteServer {
                 }
             }
         }
-        log.info("loaded " + i + " entries from " + dataPath);
+        log.info("loaded " + i + " entries from " + txPath);
     }
 
     
@@ -78,6 +137,9 @@ public class AutocompleteServer {
 
     private int sendError(int code, HTTPServer.Request request, HTTPServer.Response response, String message) throws IOException {
         log.warning("error occured processing " + request.getPath() + ": " + message);
+        if (!message.endsWith("\n")) {
+            message += "\n";
+        }
         response.sendError(code, message);
         return code;
     }
@@ -87,6 +149,9 @@ public class AutocompleteServer {
     }
 
     private int sendOkay(HTTPServer.Request request, HTTPServer.Response response, String message) throws IOException {
+        if (!message.endsWith("\n")) {
+            message += "\n";
+        }
         response.send(200, message);
         return 200;
     }
@@ -94,7 +159,7 @@ public class AutocompleteServer {
 
     public int handle(HTTPServer.Request request, HTTPServer.Response response) throws IOException {
         log.info("Received request " + request.getPath());
-        
+
         int code = 200;
 
         if (request.getPath().startsWith(PATH_DUMP)) {
@@ -107,7 +172,7 @@ public class AutocompleteServer {
             code = sendError(400, request, response, "unknown path: " + request.getPath());
         }
         
-        return code;
+        return 0;
     }
     
     public int handleDump(HTTPServer.Request request, HTTPServer.Response response) throws IOException {
@@ -116,8 +181,8 @@ public class AutocompleteServer {
     }
 
     public void dump() throws IOException {
-        synchronized (dataPath) {
-            File newFile = new File(dataPath.toString() + ".new");
+        synchronized (txPath) {
+            File newFile = new File(txPath.toString() + ".new");
             BufferedWriter newWriter = new BufferedWriter(new FileWriter(newFile));
             for (AutocompleteEntry<String, AbstractEntity> entry : tree.getEntries()) {
                 newWriter.write(entry.getValue().serialize() + "\n");
@@ -125,9 +190,9 @@ public class AutocompleteServer {
             newWriter.flush();
             newWriter.close();
             writer.close();
-            dataPath.delete();
-            newFile.renameTo(dataPath);
-            writer = new BufferedWriter(new FileWriter(dataPath, true));
+            txPath.delete();
+            newFile.renameTo(txPath);
+            writer = new BufferedWriter(new FileWriter(txPath, true));
         }
     }
 
@@ -179,7 +244,7 @@ public class AutocompleteServer {
         tree.add(entry);
 
         String json = entry.getValue().serialize();
-        synchronized (dataPath) {
+        synchronized (txPath) {
             // Should we flush, or not?
             writer.write(json + "\n");
             writer.flush();
@@ -233,15 +298,15 @@ public class AutocompleteServer {
 
     public static void main(String args[]) throws IOException, InterruptedException {
         if (args.length == 0) {
-            System.err.printf("Usage: %s data_file port%n",
+            System.err.printf("Usage: %s txLog port%n",
                 AutocompleteServer.class.getName());
             return;
         }
-        File dataPath = new File(args[0]);
+        File txPath = new File(args[0]);
         int port = Integer.parseInt(args[1]);
         AutocompleteTree<String, AbstractEntity> tree
                 = new AutocompleteTree<String, AbstractEntity>();
-        AutocompleteServer server = new AutocompleteServer(tree, dataPath, port);
+        AutocompleteServer server = new AutocompleteServer(tree, txPath, port);
         server.start();
 //        server.loadCities();
         System.out.println("server listening on port " + port);
