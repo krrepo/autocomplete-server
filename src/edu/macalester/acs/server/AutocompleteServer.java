@@ -72,8 +72,11 @@ import edu.macalester.acs.AutocompleteEntry;
  *
  * TODO:
  * <ul>
- *  <li>Create option controlling use of flushing.
- *  <li>Create in-memory version without transaction file.
+ *  <li>Add option controlling use of flushing.
+ *  <li>Add option for in-memory use without transaction file.
+ *  <li>Figure out security scheme, especially for write actions.
+ *  <li>Switch to Jetty.
+ *  <li>Understand where the .5 milli overhead comes from and optimize accordingly.
  * </ul>
  * 
  * @author Shilad Sen
