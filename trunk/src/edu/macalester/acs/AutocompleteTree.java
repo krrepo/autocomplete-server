@@ -67,6 +67,19 @@ import java.util.*;
  *
  * This class should be thread-safe.
  *
+ * TODO:
+ * <ul>
+ * <li>Enable the autocomplete() method to supply a predicate so that it
+ * can only match a subset of the entities in the tree.  E.g. just show
+ * me People starting with "fo."  Adjust the cache so that it is predicate
+ * aware, perhaps by asking the caller to define a named "scope" associated
+ * with the passed-in predicate.
+ * <li>Support lucene (or something similar) as a persistent, disk-based
+ * datastructure.
+ * <li>Explore ways of improving locks so that threading scales better.
+ * <li>Optimize cache invalidation logic.
+ * </ul>
+ *
  * @author Shilad Sen
  */
 public class AutocompleteTree<K extends Comparable, V> {
@@ -125,6 +138,9 @@ public class AutocompleteTree<K extends Comparable, V> {
         this.fragmenter = fragmenter;
     }
 
+    /**
+     * Removes all information in the tree.
+     */
     public void clear() {
         synchronized (map) {
             synchronized (tree) {
