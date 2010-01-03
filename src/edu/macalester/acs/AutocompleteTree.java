@@ -90,6 +90,9 @@ public class AutocompleteTree<K extends Comparable, V> {
     /** Initial number of results to cache per prefix */
     private static final int DEFAULT_NUM_CACHE_RESULTS = 20;
 
+    /** Name of the default cache */
+    private static final String DEFAULT_DOMAIN = "DEFAULT_DOMAIN";
+
     /** Cleans and tokenizes entity names */
     private Fragmenter<K, V> fragmenter;
 
@@ -114,14 +117,19 @@ public class AutocompleteTree<K extends Comparable, V> {
     /** Alpha sorted autocomplete tree */
     private final TreeSet<AutocompleteFragment<K, V>> tree = new TreeSet<AutocompleteFragment<K, V>>();
 
-    /** Cache for common queries */
-    private final Map<String, TreeSet<AutocompleteEntry<K, V>>> cache = new HashMap<String, TreeSet<AutocompleteEntry<K, V>>>();
+    /**
+     * Cache for common queries.
+     * The top-level map is domain names to their individual caches.
+     */
+    private final Map<String, Map<String, TreeSet<AutocompleteEntry<K, V>>>> cache =
+            new HashMap<String, Map<String, TreeSet<AutocompleteEntry<K, V>>>>();
 
     /** Maximum query length for entries in the cache. */
     private int maxCacheQueryLength = DEFAULT_MAX_CACHE_QUERY_LENGTH;
 
     /** Number of results to cache for each query */
     private int numCacheResults = DEFAULT_NUM_CACHE_RESULTS;
+
 
     /**
      * Creates a new autocomplete tree with a SimpleFragmenter.
@@ -344,6 +352,7 @@ public class AutocompleteTree<K extends Comparable, V> {
 
     }
 
+
     /**
      * Executes an autocomplete search against the stored entries.
      * Before comparing the query to fragments, each is normalized using
@@ -356,13 +365,35 @@ public class AutocompleteTree<K extends Comparable, V> {
      * @return
      */
     public SortedSet<AutocompleteEntry<K, V>> autocomplete(String query, int maxResults) {
+        return autocomplete(DEFAULT_DOMAIN, query, null, maxResults);
+    }
+
+    /**
+     * Executes an autocomplete search against the stored entries.
+     * Before comparing the query to fragments, each is normalized using
+     * the fragmenter (or SimpleFragmenter if none was specified)
+     * If there are more than maxResults that begin with the query, the
+     * highest-score results are returned.
+     *
+     * @param query
+     * @param maxResults Maximum number of results that are returned.
+     * @return
+     */
+    public SortedSet<AutocompleteEntry<K, V>> autocomplete(String domain, String query, AutocompleteFilter<K,V> filter, int maxResults) {
+        if (domain == null && filter != null) {
+            throw new IllegalArgumentException("cannot use a filter without a domain");
+        }
+        domain = (domain == null) ? DEFAULT_DOMAIN : domain;
         String start = fragmenter.normalize(query);
         TreeSet<AutocompleteEntry<K, V>> results = null;
 
         // Check the cache
         if (start.length() <= maxCacheQueryLength) {
             synchronized (cache) {
-                results = cache.get(start);
+                if (!cache.containsKey(domain)) {
+                    cache.put(domain, new HashMap<String, TreeSet<AutocompleteEntry<K, V>>>());
+                }
+                results = cache.get(domain).get(start);
             }
         }
         
@@ -379,6 +410,9 @@ public class AutocompleteTree<K extends Comparable, V> {
 
             synchronized (tree) {
                 for (AutocompleteFragment<K, V> fragment : tree.subSet(startWrapper, endWrapper)) {
+                    if (filter != null && !filter.matches(fragment.getEntry())) {
+                        continue;
+                    }
                     if (results.size() < n) {
                         results.add(fragment.getEntry());
                     } else if (SCORE_COMPARATOR.compare(fragment.getEntry(), results.last()) < 0) {
@@ -391,7 +425,7 @@ public class AutocompleteTree<K extends Comparable, V> {
 
         if (start.length() <= maxCacheQueryLength) {
             synchronized (cache) {
-                cache.put(start, results);
+                cache.get(domain).put(start, results);
             }
         }
 
@@ -422,9 +456,11 @@ public class AutocompleteTree<K extends Comparable, V> {
                 for (int n = 1; n <= maxCacheQueryLength; n++) {
                     if (fragment.getFragment().length() >= n) {
                         String prefix = fragment.getFragment().substring(0, n);
-                        SortedSet<AutocompleteEntry<K, V>> results = cache.get(prefix);
-                        if (results != null && results.contains(entry)) {
-                            cache.remove(prefix);
+                        for (Map<String, TreeSet<AutocompleteEntry<K, V>>> domainCache : cache.values()) {
+                            SortedSet<AutocompleteEntry<K, V>> results = domainCache.get(prefix);
+                            if (results != null && results.contains(entry)) {
+                                domainCache.remove(prefix);
+                            }
                         }
                     }
                 }
@@ -445,11 +481,13 @@ public class AutocompleteTree<K extends Comparable, V> {
                 for (int n = 1; n <= maxCacheQueryLength; n++) {
                     if (fragment.getFragment().length() >= n) {
                         String prefix = fragment.getFragment().substring(0, n);
-                        SortedSet<AutocompleteEntry<K, V>> results = cache.get(prefix);
-                        if (results != null) {
-                            if (results.size() < numCacheResults ||
-                                    results.last().getScore() <= entry.getScore()) {
-                                cache.remove(prefix);
+                        for (Map<String, TreeSet<AutocompleteEntry<K, V>>> domainCache : cache.values()) {
+                            SortedSet<AutocompleteEntry<K, V>> results = domainCache.get(prefix);
+                            if (results != null) {
+                                if (results.size() < numCacheResults ||
+                                        results.last().getScore() <= entry.getScore()) {
+                                    domainCache.remove(prefix);
+                                }
                             }
                         }
                     }
