@@ -92,6 +92,49 @@ public class TestAutocompleteTree extends TestCase {
         assertEquals(results.last().getValue(), CHICAGO);
     }
 
+    public void testDomain() {
+        tree.setMaxCacheQueryLength(2);
+        AutocompleteFilter<Integer, City> evenFilter = new AutocompleteFilter<Integer, City>() {
+            public boolean matches(AutocompleteEntry<Integer, City> entry) {
+                return entry.getValue().getName().length() % 2 == 0;
+            }
+        };
+        AutocompleteFilter<Integer, City> oddFilter = new AutocompleteFilter<Integer, City>() {
+            public boolean matches(AutocompleteEntry<Integer, City> entry) {
+                return entry.getValue().getName().length() % 2 == 1; 
+            }
+        };
+        SortedSet<AutocompleteEntry<Integer, City>> results;
+
+        // NUM letters in:
+        // Chicago : 7
+        // Cincinatti : 10
+        // Cleveland : 9
+        // Charleston : 10
+        results = tree.autocomplete("odd", "C", oddFilter, 10);
+        assertEquals(results.size(), 2);
+        assertEquals(results.first().getValue(), CHICAGO);
+        assertEquals(results.last().getValue(), CLEVELAND);
+        results = tree.autocomplete("even", "C", evenFilter, 10);
+        assertEquals(results.first().getValue(), CINCINATTI);
+        assertEquals(results.last().getValue(), CHARLESTON);
+
+        // repeat to test cache.
+        results = tree.autocomplete("odd", "C", oddFilter, 10);
+        assertEquals(results.size(), 2);
+        assertEquals(results.first().getValue(), CHICAGO);
+        assertEquals(results.last().getValue(), CLEVELAND);
+        results = tree.autocomplete("even", "C", evenFilter, 10);
+        assertEquals(results.first().getValue(), CINCINATTI);
+        assertEquals(results.last().getValue(), CHARLESTON);
+
+        // try getting everything
+        results = tree.autocomplete("C", 10);
+        assertEquals(results.size(), 4);
+        assertEquals(results.first().getValue(), CHICAGO);
+        assertEquals(results.last().getValue(), CHARLESTON);
+    }
+
     
     public AutocompleteTree<Integer, City> makeTree() {
         AutocompleteTree<Integer, City> act = new AutocompleteTree<Integer, City>();
