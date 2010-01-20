@@ -11,9 +11,20 @@ import java.util.ArrayList;
 public class SimpleFragmenter<K extends Comparable, V> implements Fragmenter<K, V>{
     
     public List<String> getFragments(AutocompleteEntry<K, V> entry) {
+        // Build up list of fragments
         List<String> fragments = new ArrayList<String>();
         for (String token : normalize(entry.getValue().toString()).split("\\s+")) {
             fragments.add(token);
+        }
+
+        // Make each fragment extend to the end of the phrase
+        String suffix = "";
+        for (int i = fragments.size() - 1; i >= 0; i--) {
+            if (!suffix.isEmpty()) {
+                fragments.set(i, fragments.get(i) + " " + suffix);
+                suffix += " ";
+            }
+            suffix += fragments.get(i);
         }
         return fragments;
     }
