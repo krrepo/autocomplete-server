@@ -116,6 +116,18 @@
        </java>
   </target>
 
+  <target name="zip" depends="compile">
+    <zip destfile="${dist}/${app.name}-${app.version}.zip">
+        <zipfileset dir="lib/" includes="*.jar"  prefix="autocomplete-server/lib"/>
+        <zipfileset dir="dist" includes="*.jar" prefix="autocomplete-server/"/>
+        <zipfileset dir="." includes="README.txt" prefix="autocomplete-server/"/>
+        <zipfileset dir="." includes="data" prefix="autocomplete-server/data"/>
+        <zipfileset dir="." includes="src" prefix="autocomplete-server/src"/>
+        <zipfileset dir="." includes="docs" prefix="autocomplete-server/docs"/>
+    </zip>
+  </target>
+
+
   <target name="test" depends="compile" description="run unit tests">
     <delete dir="${test}/reports"/>
     <mkdir dir="${test}/reports"/>
