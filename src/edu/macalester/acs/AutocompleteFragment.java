@@ -2,7 +2,7 @@ package edu.macalester.acs;
 
 /**
  * @author Shilad Sen
- * @see AutocompleteTree
+ * @see TrivialAutocompleteTree
  */
 public class AutocompleteFragment<K extends Comparable, V> implements Comparable<AutocompleteFragment<K, V>> {
     private AutocompleteEntry<K, V> entry;

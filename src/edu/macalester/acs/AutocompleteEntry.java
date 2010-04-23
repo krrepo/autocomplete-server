@@ -6,7 +6,7 @@ import java.util.Collections;
 
 /**
  * @author Shilad Sen
- * @see AutocompleteTree
+ * @see TrivialAutocompleteTree
  */
 public class AutocompleteEntry<K extends Comparable, V> {
     private K key;
