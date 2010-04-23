@@ -82,7 +82,7 @@ import java.util.*;
  *
  * @author Shilad Sen
  */
-public class AutocompleteTree<K extends Comparable, V> {
+public class AutocompleteTree<K extends Comparable, V> extends BaseAutocompleter<K, V> implements Autocompleter<K, V> {
 
     /** Maximum length for prefixes that should be cached */
     private static final int DEFAULT_MAX_CACHE_QUERY_LENGTH = 2;
@@ -146,9 +146,9 @@ public class AutocompleteTree<K extends Comparable, V> {
         this.fragmenter = fragmenter;
     }
 
-    /**
-     * Removes all information in the tree.
-     */
+    /* (non-Javadoc)
+	 * @see edu.macalester.acs.Autocompleter#clear()
+	 */
     public void clear() {
         synchronized (map) {
             synchronized (tree) {
@@ -196,11 +196,9 @@ public class AutocompleteTree<K extends Comparable, V> {
         }
     }
 
-    /**
-     * Add a new autocomplete entry to the map.
-     * 
-     * @param entry
-     */
+    /* (non-Javadoc)
+	 * @see edu.macalester.acs.Autocompleter#add(edu.macalester.acs.AutocompleteEntry)
+	 */
     public void add(AutocompleteEntry<K, V> entry) {
         synchronized (map) {
             if (map.containsKey(entry.getKey())) {
@@ -221,26 +219,7 @@ public class AutocompleteTree<K extends Comparable, V> {
             adjustCacheForIncreasedScore(entry);
         }
     }
-
-    /**
-     * Adds a new autocomplete entry to the tree.
-     * @param key
-     * @param value
-     */
-    public void add(K key, V value) {
-        add(new AutocompleteEntry<K, V>(key, value));
-    }
-
-    /**
-     * Adds a new autocomplete entry to the tree.
-     * @param key
-     * @param value
-     * @param score
-     */
-    public void add(K key, V value, double score) {
-        add(new AutocompleteEntry<K, V>(key, value, score));
-    }
-
+    
     /**
      * Returns a collection of all the autocomplete entries in the
      * tree.  This is an expensive operation memory-wise, since the
@@ -255,11 +234,9 @@ public class AutocompleteTree<K extends Comparable, V> {
         }
     }
 
-    /**
-     * Removes an autocomplete entry from the map.
-     * 
-     * @param key
-     */
+    /* (non-Javadoc)
+	 * @see edu.macalester.acs.Autocompleter#remove(K)
+	 */
     public void remove(K key) {
         synchronized (map) {
             AutocompleteEntry entry = map.get(key);
@@ -275,43 +252,22 @@ public class AutocompleteTree<K extends Comparable, V> {
         }
     }
 
-    /**
-     * Check to see if the map contains an entry associated with the
-     * provided key.
-     * @param key
-     * @return
-     */
+    /* (non-Javadoc)
+	 * @see edu.macalester.acs.Autocompleter#contains(K)
+	 */
     public boolean contains(K key) {
         synchronized (map) {
             return map.containsKey(key);
         }
     }
 
-    /**
-     * Return the entry associated with the provided key.
-     * @param key
-     * @return
-     */
+    /* (non-Javadoc)
+	 * @see edu.macalester.acs.Autocompleter#get(K)
+	 */
     public AutocompleteEntry<K, V> get(K key) {
         synchronized (map) {
             return map.get(key);
         }
-    }
-
-    /**
-     * Increments the score of the provided key by 1.
-     * @param key
-     */
-    public void increment(K key) {
-        setScore(key, get(key).getScore() + 1);
-    }
-
-    /**
-     * Decrements the score of the provided key by 1.
-     * @param key
-     */
-    public void decrement(K key) {
-        setScore(key, get(key).getScore() - 1);
     }
 
 
@@ -352,33 +308,9 @@ public class AutocompleteTree<K extends Comparable, V> {
 
     }
 
-
-    /**
-     * Executes an autocomplete search against the stored entries.
-     * Before comparing the query to fragments, each is normalized using
-     * the fragmenter (or SimpleFragmenter if none was specified)
-     * If there are more than maxResults that begin with the query, the
-     * highest-score results are returned.
-     *
-     * @param query
-     * @param maxResults Maximum number of results that are returned.
-     * @return
-     */
-    public SortedSet<AutocompleteEntry<K, V>> autocomplete(String query, int maxResults) {
-        return autocomplete(DEFAULT_DOMAIN, query, null, maxResults);
-    }
-
-    /**
-     * Executes an autocomplete search against the stored entries.
-     * Before comparing the query to fragments, each is normalized using
-     * the fragmenter (or SimpleFragmenter if none was specified)
-     * If there are more than maxResults that begin with the query, the
-     * highest-score results are returned.
-     *
-     * @param query
-     * @param maxResults Maximum number of results that are returned.
-     * @return
-     */
+    /* (non-Javadoc)
+	 * @see edu.macalester.acs.Autocompleter#autocomplete(java.lang.String, java.lang.String, edu.macalester.acs.AutocompleteFilter, int)
+	 */
     public SortedSet<AutocompleteEntry<K, V>> autocomplete(String domain, String query, AutocompleteFilter<K,V> filter, int maxResults) {
         if (domain == null && filter != null) {
             throw new IllegalArgumentException("cannot use a filter without a domain");

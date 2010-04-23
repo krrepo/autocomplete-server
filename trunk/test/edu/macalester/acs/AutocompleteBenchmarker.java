@@ -16,16 +16,16 @@ import java.lang.management.ThreadMXBean;
 public class AutocompleteBenchmarker {
 
     /** The number of threads to use for the simulation */
-    private static final int NUM_THREADS = 10;
+    private static final int NUM_THREADS = 1;
 
     /** The number of iterations per thread to use for the simulation */
-    private static final int NUM_ITERATIONS = 10000;
+    private static final int NUM_ITERATIONS = 0000;
 
     /** Frequencies are randomly distributed between 0 and this number. */
     private static final int MAX_SCORE = 100;
 
     /** The maximum length of an autocomplete query. */
-    private static final int MAX_QUERY_LENGTH = 10;
+    private static final int MAX_QUERY_LENGTH = 4;
 
     /** The maximum number of autocomplete results */
     private static final int MAX_RESULTS = 6;
@@ -47,7 +47,7 @@ public class AutocompleteBenchmarker {
 
     private Random rand = new Random();
     private List<City> cities;
-    private AutocompleteTree<Integer, City> tree;
+    private Autocompleter<Integer, City> tree;
     private static final double ONE_BILLION = 1000000000.0;
 
     public AutocompleteBenchmarker() {
@@ -82,9 +82,11 @@ public class AutocompleteBenchmarker {
      */
     public void buildTree() {
         double begin = getCpuSeconds();
-        tree = new AutocompleteTree<Integer, City>();
-        tree.setNumCacheResults(MAX_RESULTS);
-        tree.setMaxCacheQueryLength(MAX_CACHE_QUERY_LENGTH);
+        TrivialAutocompleteTree act = new TrivialAutocompleteTree<Integer, City>();
+//        act.setNumCacheResults(MAX_RESULTS);
+//        act.setMaxCacheQueryLength(MAX_CACHE_QUERY_LENGTH);
+        tree = act;
+        
         for (City city : cities) {
             int score = rand.nextInt(MAX_SCORE);
             tree.add(new AutocompleteEntry<Integer, City>(city.getId(), city, score));
