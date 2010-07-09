@@ -5,7 +5,7 @@
 
   <!-- set global properties for this build -->
   <property name="app.name" value="autocomplete-server"/>
-  <property name="app.version" value="0.4"/>
+  <property name="app.version" value="0.5"/>
   <buildnumber file="build.num"/>
 
   <property name="src" location="src"/>
