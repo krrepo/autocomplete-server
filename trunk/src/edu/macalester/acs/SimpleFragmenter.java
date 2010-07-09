@@ -12,19 +12,20 @@ public class SimpleFragmenter<K extends Comparable, V> implements Fragmenter<K, 
     
     public List<String> getFragments(AutocompleteEntry<K, V> entry) {
         // Build up list of fragments
-        List<String> fragments = new ArrayList<String>();
+        List<String> words = new ArrayList<String>();
         for (String token : normalize(entry.getValue().toString()).split("\\s+")) {
-            fragments.add(token);
+            words.add(token);
         }
 
         // Make each fragment extend to the end of the phrase
+        List<String> fragments = new ArrayList<String>();
         String suffix = "";
-        for (int i = fragments.size() - 1; i >= 0; i--) {
+        for (int i = words.size() - 1; i >= 0; i--) {
             if (!suffix.isEmpty()) {
-                fragments.set(i, fragments.get(i) + " " + suffix);
-                suffix += " ";
+                suffix = " " + suffix;
             }
-            suffix += fragments.get(i);
+            suffix = words.get(i) + suffix;
+            fragments.add(suffix);
         }
         return fragments;
     }
