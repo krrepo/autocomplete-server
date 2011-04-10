@@ -92,6 +92,28 @@ public class TestAutocompleteTree extends TestCase {
         assertEquals(results.last().getValue(), CHICAGO);
     }
 
+    /**
+     * Test for bug #2.
+     */
+    public void testBug2() {
+
+        AutocompleteTree<Integer, City> tree = new AutocompleteTree<Integer, City>();
+
+        // Associate cities with their ids
+        tree.add(1, new City(1, "Paris", "France"));
+        tree.add(2, new City(2, "Paris", "Texas"));
+        tree.add(3, new City(3, "Paris Plage", "France"));
+
+        tree.setScore(1, 1);      // increments the score for paris by 1.
+        tree.setScore(2, 2);
+        tree.setScore(3, 3);
+
+        SortedSet<AutocompleteEntry<Integer, City>> results = tree.autocomplete("pari", 3);
+        assertEquals(results.size(), 3);
+        SortedSet<AutocompleteEntry<Integer, City>> results2 = tree.autocomplete("paris", 3);
+        assertEquals(results2.size(), 3);
+    }
+
     public void testDomain() {
         tree.setMaxCacheQueryLength(2);
         AutocompleteFilter<Integer, City> evenFilter = new AutocompleteFilter<Integer, City>() {

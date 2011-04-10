@@ -23,16 +23,29 @@ public class AutocompleteFragment<K extends Comparable, V> implements Comparable
 
     public int compareTo(AutocompleteFragment<K, V> other) {
         int r = fragment.compareTo(other.fragment);
-        if (r == 0 && other.entry != null && entry != null) {
-            if (entry.getScore() > other.entry.getScore()) {
-                r = -1;
-            } else if (entry.getScore() < other.entry.getScore()) {
-                r = +1;
+        if (r != 0) {
+            return r;
+        }
+        if (entry != null && other.entry != null) {
+            if (r == 0) {
+                if (entry.getScore() > other.entry.getScore()) {
+                    r = -1;
+                } else if (entry.getScore() < other.entry.getScore()) {
+                    r = +1;
+                }
             }
+            if (r == 0) {
+                r = entry.getKey().compareTo(other.entry.getKey());
+            }
+        } else if (entry == null && other.entry != null) {
+            r = -1;
+        } else if (entry != null && other.entry == null) {
+            r = +1;
+        } else {
+            assert(entry == null && other.entry == null);
+            r = 0;
         }
-        if (r == 0 && other.entry != null && entry != null) {
-            r = entry.getKey().compareTo(other.entry.getKey());
-        }
+//        System.out.println("result for " + fragment + " and " + other.fragment + " is " + r);
         return r;
     }
 
